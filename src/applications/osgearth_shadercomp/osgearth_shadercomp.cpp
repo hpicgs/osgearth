@@ -91,7 +91,9 @@ namespace TEST_1
     }
 }
 
+//-------------------------------------------------------------------------
 
+// Simple main injection test -- injects custum vertex and fragment main-functions. Uses BindFragDataLocation instead of gl_FragColor.
 namespace TEST_2
 {
     char s_vertMain[] =
@@ -125,6 +127,8 @@ namespace TEST_2
             "void oe_lighting_stage_hook(inout vec4 color); \n"
 
             "in vec4 osg_FrontColor; \n"
+            "out vec4 outColor; \n"
+
             "void main(void) \n"
             "{ \n"
             "    vec4 color = osg_FrontColor; \n"
@@ -132,7 +136,7 @@ namespace TEST_2
             "    oe_coloring_stage_hook(color); \n"
             "    oe_lighting_stage_hook(color); \n"
 
-            "    gl_FragColor = color; \n"
+            "    outColor = color; \n"
             "} \n";
 
     osg::StateAttribute* createMain()
@@ -140,6 +144,8 @@ namespace TEST_2
         osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram;
         vp->setFunction("mainVert", s_vertMain, osgEarth::ShaderComp::LOCATION_VERTEX_MAIN);
         vp->setFunction("mainFrag", s_fragMain, osgEarth::ShaderComp::LOCATION_FRAGMENT_MAIN);
+
+        vp->getTemplate()->addBindFragDataLocation("outColor", 0);
         return vp;
     }
 
