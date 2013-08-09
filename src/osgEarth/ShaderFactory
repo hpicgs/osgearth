@@ -32,12 +32,19 @@ namespace osgEarth
     class OSGEARTH_EXPORT ShaderFactory : public osg::Referenced
     {
     public:
-        /** Creates a vertex shader main(). */
-        virtual osg::Shader* createVertexShaderMain(
+        virtual osg::Shader* createVertexShaderMain() const;
+        virtual osg::Shader* createFragmentShaderMain() const;
+
+        /**
+         * Creates wrappers for the vertex shader hooks.
+         */
+        virtual osg::Shader* createVertexShaderHooks(
             const ShaderComp::FunctionLocationMap& functions) const;
 
-        /** Creates a fragment shader main(). */
-        virtual osg::Shader* createFragmentShaderMain(
+        /**
+         * Creates wrappers for the fragment shader hooks.
+         */
+        virtual osg::Shader* createFragmentShaderHooks(
             const ShaderComp::FunctionLocationMap& functions) const;
 
         /**

@@ -310,7 +310,7 @@ VirtualProgram::setFunction(const std::string& functionName,
     
     ofm.insert( std::pair<float,std::string>( priority, functionName ) );
 
-    osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_CLIP ?
+    osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_MAIN ?
         osg::Shader::VERTEX : osg::Shader::FRAGMENT;
 
     setShader( functionName, new osg::Shader(type, shaderSource) );
@@ -600,9 +600,9 @@ VirtualProgram::buildProgram(osg::State&        state,
     // build a new set of accumulated functions, to support the creation of main()
     refreshAccumulatedFunctions( state );
 
-    // create new MAINs for this function stack.
-    osg::Shader* vertMain = Registry::shaderFactory()->createVertexShaderMain( _accumulatedFunctions );
-    osg::Shader* fragMain = Registry::shaderFactory()->createFragmentShaderMain( _accumulatedFunctions );
+    // create new Hooks for this function stack.
+    osg::Shader* vertHooks = Registry::shaderFactory()->createVertexShaderHooks( _accumulatedFunctions );
+    osg::Shader* fragHooks = Registry::shaderFactory()->createFragmentShaderHooks( _accumulatedFunctions );
 
     // build a new "key vector" now that we've changed the shader map.
     // we call is a key vector because it uniquely identifies this shader program
@@ -613,12 +613,25 @@ VirtualProgram::buildProgram(osg::State&        state,
         keyVector.push_back( i->second.first.get() );
     }
 
-    // finally, add the mains (AFTER building the key vector .. we don't want or
-    // need to mains in the key vector since they are completely derived from the
+    // ensure we have main functions
+    FunctionLocationMap::const_iterator vertMainItr = _accumulatedFunctions.find( LOCATION_VERTEX_MAIN );
+    if ( vertMainItr == _accumulatedFunctions.end() )
+    {
+        keyVector.push_back( Registry::shaderFactory()->createVertexShaderMain() );
+    }
+
+    FunctionLocationMap::const_iterator fragMainItr = _accumulatedFunctions.find( LOCATION_FRAGMENT_MAIN );
+    if ( fragMainItr == _accumulatedFunctions.end() )
+    {
+        keyVector.push_back( Registry::shaderFactory()->createFragmentShaderMain() );
+    }
+
+    // finally, add the hooks (AFTER building the key vector .. we don't want or
+    // need to hooks in the key vector since they are completely derived from the
     // other elements of the key vector.)
     ShaderVector buildVector( keyVector );
-    buildVector.push_back( vertMain );
-    buildVector.push_back( fragMain );
+    buildVector.push_back( vertHooks );
+    buildVector.push_back( fragHooks );
 
     if ( s_dumpShaders )
         OE_NOTICE << LC << "---------PROGRAM: " << getName() << " ---------------\n" << std::endl;

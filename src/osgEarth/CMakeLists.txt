@@ -24,7 +24,7 @@ SET(LIB_PUBLIC_HEADERS
     AutoScale
     Bounds
     Cache
-	CacheEstimator
+    CacheEstimator
     CacheBin
     CachePolicy
     CacheSeed
@@ -124,6 +124,7 @@ SET(LIB_PUBLIC_HEADERS
     Viewpoint
     VirtualProgram
     XmlUtils
+    ${OSGEARTH_CONFIG_HEADER}
 )
 
 
