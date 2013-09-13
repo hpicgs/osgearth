@@ -38,6 +38,7 @@ SET(LIB_PUBLIC_HEADERS
     Containers
     Cube
     CullingUtils
+    DateTime
     Decluttering
     DepthOffset
     DPLineSegmentIntersector
@@ -151,7 +152,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     AutoScale.cpp
     Bounds.cpp
     Cache.cpp
-	CacheEstimator.cpp
+    CacheEstimator.cpp
     CachePolicy.cpp
     CacheSeed.cpp
     Capabilities.cpp
@@ -162,6 +163,7 @@ ADD_LIBRARY(${LIB_NAME} ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     Config.cpp
     Cube.cpp
     CullingUtils.cpp
+    DateTime.cpp
     Decluttering.cpp
     DepthOffset.cpp
     Draggers.cpp

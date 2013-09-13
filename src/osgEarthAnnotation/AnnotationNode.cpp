@@ -148,6 +148,16 @@ AnnotationNode::setAnnotationData( AnnotationData* data )
     _annoData = data;
 }
 
+AnnotationData*
+AnnotationNode::getOrCreateAnnotationData()
+{
+    if ( !_annoData.valid() )
+    {
+        setAnnotationData( new AnnotationData() );
+    }
+    return _annoData.get();
+}
+
 void
 AnnotationNode::setDynamic( bool value )
 {
@@ -394,6 +404,12 @@ AnnotationNode::applyGeneralSymbology(const Style& style)
             getOrCreateStateSet()->setMode(
                 GL_LIGHTING,
                 (render->lighting() == true? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE );
+        }
+
+        if ( render->depthOffset().isSet() ) // && !_depthAdj )
+        {
+            _doAdapter.setDepthOffsetOptions( *render->depthOffset() );
+            setDepthAdjustment( true );
         }
     }
 }
