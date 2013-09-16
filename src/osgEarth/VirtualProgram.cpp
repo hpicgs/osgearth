@@ -436,7 +436,7 @@ namespace
     }
 
 
-    void parseShaderForMerging( const std::string& source, unsigned& version, HeaderMap& headers, std::stringstream& body )
+    void parseShaderForMerging( const std::string& source, unsigned& version, HeaderMap& headers, std::stringstream& body, bool& compatibility )
     {
         // break into lines:
         StringVector lines;
@@ -460,6 +460,15 @@ namespace
                         if ( newVersion > version )
                         {
                             version = newVersion;
+                        }
+                    }
+
+                    // compatability profile?
+                    if (tokens.size() > 2 )
+                    {
+                        if ( tokens[2] == "compatibility" )
+                        {
+                            compatibility = true;
                         }
                     }
                 }
@@ -519,10 +528,12 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
         unsigned          vertVersion = 0;
         HeaderMap         vertHeaders;
         std::stringstream vertBody;
+        bool              vertCompatibility = false;
 
         unsigned          fragVersion = 0;
         HeaderMap         fragHeaders;
         std::stringstream fragBody;
+        bool              fragCompatibility = false;
 
         // parse the shaders, combining header lines and finding the highest version:
         for( VirtualProgram::ShaderVector::const_iterator i = shaders.begin(); i != shaders.end(); ++i )
@@ -530,11 +541,11 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
             osg::Shader* s = i->get();
             if ( s->getType() == osg::Shader::VERTEX )
             {
-                parseShaderForMerging( s->getShaderSource(), vertVersion, vertHeaders, vertBody );
+                parseShaderForMerging( s->getShaderSource(), vertVersion, vertHeaders, vertBody, vertCompatibility );
             }
             else if ( s->getType() == osg::Shader::FRAGMENT )
             {
-                parseShaderForMerging( s->getShaderSource(), fragVersion, fragHeaders, fragBody );
+                parseShaderForMerging( s->getShaderSource(), fragVersion, fragHeaders, fragBody, fragCompatibility );
             }
         }
 
@@ -543,7 +554,7 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
         vertBodyText = vertBody.str();
         std::stringstream vertShaderBuf;
         if ( vertVersion > 0 )
-            vertShaderBuf << "#version " << vertVersion << "\n";
+            vertShaderBuf << "#version " << vertVersion << (vertCompatibility ? " compatibility" : "") << "\n";
         for( HeaderMap::const_iterator h = vertHeaders.begin(); h != vertHeaders.end(); ++h )
             vertShaderBuf << h->second << "\n";
         vertShaderBuf << vertBodyText << "\n";
@@ -553,7 +564,7 @@ VirtualProgram::addShadersToProgram(const ShaderVector&      shaders,
         fragBodyText = fragBody.str();
         std::stringstream fragShaderBuf;
         if ( fragVersion > 0 )
-            fragShaderBuf << "#version " << fragVersion << "\n";
+            fragShaderBuf << "#version " << fragVersion << (fragCompatibility ? " compatibility" : "") << "\n";
         for( HeaderMap::const_iterator h = fragHeaders.begin(); h != fragHeaders.end(); ++h )
             fragShaderBuf << h->second << "\n";
         fragShaderBuf << fragBodyText << "\n";
