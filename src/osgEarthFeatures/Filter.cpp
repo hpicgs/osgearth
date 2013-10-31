@@ -29,6 +29,16 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 
 /********************************************************************************/
+Filter::~Filter()
+{
+}
+
+/********************************************************************************/
+FeatureFilter::~FeatureFilter()
+{
+}
+
+/********************************************************************************/
         
 FeatureFilterRegistry::FeatureFilterRegistry()
 {
@@ -71,6 +81,10 @@ FeatureFilterRegistry::create( const Config& conf )
 } 
 
 /********************************************************************************/
+
+FeaturesToNodeFilter::~FeaturesToNodeFilter()
+{
+}
 
 void
 FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
@@ -249,8 +263,15 @@ FeaturesToNodeFilter::applyLineSymbology(osg::StateSet*    stateset,
 {
     if ( line && line->stroke().isSet() )
     {
-        float width = std::max( 1.0f, *line->stroke()->width() );
-        stateset->setAttributeAndModes(new osg::LineWidth(width), 1);
+        if ( line->stroke()->width().isSet() )
+        {
+            float width = std::max( 1.0f, *line->stroke()->width() );
+            if ( width != 1.0f )
+            {
+                stateset->setAttributeAndModes(new osg::LineWidth(width), 1);
+            }
+        }
+
         if ( line->stroke()->stipple().isSet() )
         {
             stateset->setAttributeAndModes( new osg::LineStipple(1, *line->stroke()->stipple()) );

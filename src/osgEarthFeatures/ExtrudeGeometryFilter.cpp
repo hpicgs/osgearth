@@ -24,7 +24,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
-#include <osgEarth/ShaderGenerator>
+#include <osgEarth/Utils>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -248,10 +248,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         colors->assign( numWallVerts, wallColor );
         walls->setColorArray( colors );
         walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-        //osg::Vec4Array* colors = new osg::Vec4Array( 1 );
-        //(*colors)[0] = wallColor;
-        //walls->setColorArray( colors );
-        //walls->setColorBinding( osg::Geometry::BIND_OVERALL );
     }
 
     // set up rooftop tessellation and texturing, if necessary:
@@ -276,22 +272,12 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             roofColors->assign( pointCount, roofColor );
             roof->setColorArray( roofColors );
             roof->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-
-            //osg::Vec4Array* roofColors = new osg::Vec4Array( 1 );
-            //(*roofColors)[0] = roofColor;
-            //roof->setColorArray( roofColors );
-            //roof->setColorBinding( osg::Geometry::BIND_OVERALL );
         }
 
         if ( roofSkin )
         {
             roofTexcoords = new osg::Vec2Array( pointCount );
             roof->setTexCoordArray( 0, roofTexcoords );
-
-            // Get the orientation of the geometry. This is a hueristic that will help 
-            // us align the roof skin texture properly. TODO: make this optional? It makes
-            // sense for buildings and such, but perhaps not for all extruded shapes.
-            roofRotation = getApparentRotation( input );
 
             roofBounds = input->getBounds();
 
@@ -301,10 +287,13 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             {
                 osg::Vec2d geogCenter = roofBounds.center2d();
                 roofProjSRS = srs->createUTMFromLonLat( Angular(geogCenter.x()), Angular(geogCenter.y()) );
-                roofBounds.transform( srs, roofProjSRS.get() );
-                osg::ref_ptr<Geometry> projectedInput = input->clone();
-                srs->transform( projectedInput->asVector(), roofProjSRS.get() );
-                roofRotation = getApparentRotation( projectedInput.get() );
+                if ( roofProjSRS.valid() )
+                {
+                    roofBounds.transform( srs, roofProjSRS.get() );
+                    osg::ref_ptr<Geometry> projectedInput = input->clone();
+                    srs->transform( projectedInput->asVector(), roofProjSRS.get() );
+                    roofRotation = getApparentRotation( projectedInput.get() );
+                }
             }
             else
             {
@@ -443,11 +432,11 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
             // figure out the rooftop texture coordinates before doing any
             // transformations:
-            if ( roofSkin )
+            if ( roofSkin && srs )
             {
                 double xr, yr;
 
-                if ( srs && srs->isGeographic() )
+                if ( srs && srs->isGeographic() && roofProjSRS )
                 {
                     osg::Vec3d projRoofPt;
                     srs->transform( roofPt, roofProjSRS.get(), projRoofPt );
@@ -464,13 +453,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 float v = (sinR*xr + cosR*yr) / roofTexSpanY;
 
                 (*roofTexcoords)[roofVertPtr].set( u, v );
-            }            
+            }
 
-            //if ( makeECEF )
-            //{
-            //    ECEF::transformAndLocalize( basePt, srs, basePt, _world2local );
-            //    ECEF::transformAndLocalize( roofPt, srs, roofPt, _world2local );
-            //}
             transformAndLocalize( basePt, srs, basePt, mapSRS, _world2local, makeECEF );
             transformAndLocalize( roofPt, srs, roofPt, mapSRS, _world2local, makeECEF );
 
@@ -601,7 +585,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             unsigned len = baseVertPtr - basePartPtr;
 
             GLenum roofLineMode = isPolygon ? GL_LINE_LOOP : GL_LINE_STRIP;
-            //osg::DrawElementsUShort* roofLine = new osg::DrawElementsUShort( roofLineMode );
             osg::DrawElementsUInt* roofLine = new osg::DrawElementsUInt( roofLineMode );
             roofLine->reserveElements( len );
             for( unsigned i=0; i<len; ++i )
@@ -613,7 +596,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             unsigned step = std::max( 1u, 
                 _outlineSymbol->tessellation().isSet() ? *_outlineSymbol->tessellation() : 1u );
 
-            //osg::DrawElementsUShort* wallLines = new osg::DrawElementsUShort( GL_LINES );
             osg::DrawElementsUInt* wallLines = new osg::DrawElementsUInt( GL_LINES );
             wallLines->reserve( len*2 );
             for( unsigned i=0; i<len; i+=step )
@@ -822,13 +804,6 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                     if ( !_makeStencilVolume )
                         osgUtil::SmoothingVisitor::smooth( *rooflines.get() );
 
-                    // texture the rooflines if necessary
-                    //applyOverlayTexturing( rooflines.get(), input, env );
-
-                    // mark this geometry as DYNAMIC because otherwise the OSG optimizer will destroy it.
-                    // TODO: why??
-                    //rooflines->setDataVariance( osg::Object::DYNAMIC );
-
                     if ( roofSkin )
                     {
                         context.resourceCache()->getStateSet( roofSkin, roofStateSet );
@@ -929,13 +904,19 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         {
 #if 1
             MeshConsolidator::run( *i->second.get() );
+
+            VertexCacheOptimizer vco;
+            i->second->accept( vco );
 #else
-        osgUtil::Optimizer opt;
-        opt.optimize( i->second.get(),
-            osgUtil::Optimizer::VERTEX_PRETRANSFORM |
-            osgUtil::Optimizer::INDEX_MESH |
-            osgUtil::Optimizer::VERTEX_POSTTRANSFORM |
-            osgUtil::Optimizer::MERGE_GEOMETRY );
+
+        //TODO: try this -- issues: it won't work on lines, and will it screw up
+        // feature indexing?
+            osgUtil::Optimizer o;
+            o.optimize( i->second.get(),
+                osgUtil::Optimizer::MERGE_GEOMETRY |
+                osgUtil::Optimizer::VERTEX_PRETRANSFORM |
+                osgUtil::Optimizer::INDEX_MESH |
+                osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
 #endif
         }
     }

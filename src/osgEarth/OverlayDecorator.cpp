@@ -382,12 +382,8 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
                                                    PerViewData&          pvd)
 {
     static int s_frame = 1;
-    static osg::Vec3d zero(0.0, 0.0, 0.0);
 
-    osg::Matrixd invViewMatrix = cv->getCurrentCamera()->getInverseViewMatrix();
-    osg::Vec3d eye = zero * invViewMatrix;
-    //osg::Vec3 eye = cv->getEyePoint();
-    eye = cv->getViewPoint();
+    osg::Vec3d eye = cv->getViewPoint();
 
     double eyeLen;
     osg::Vec3d worldUp;
@@ -413,9 +409,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         const SpatialReference* geoSRS = _engine->getTerrain()->getSRS();
         osg::Vec3d geodetic;
         geoSRS->transformFromWorld(eye, geodetic);
-
-        //double lat, lon;
-        //_ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hasl );
 
         hasl = geodetic.z();
         R = eyeLen - hasl;
@@ -614,9 +607,9 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
         visiblePH.getPoints( verts );
 
         // zero verts means the visible PH does not intersect the frustum.
-        // GW- commented out this check b/c it causes a nasty regression wherein the
-        // draped/clamped geometry jitters out of control. Need to investigate later.
-        //if ( verts.size() > 0 )
+        // TODO: when verts = 0 should we do something different? or use the previous
+        // frame's view matrix?
+        if ( verts.size() > 0 )
         {
             // calculate an orthographic RTT projection matrix based on the view-space
             // bounds of the vertex list (i.e. the extents surrounding the RTT camera 

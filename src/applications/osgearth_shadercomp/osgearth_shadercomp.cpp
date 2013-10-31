@@ -47,6 +47,7 @@ int usage( const std::string& msg )
         << "USAGE: osgearth_shadercomp <earthfile> \n"
         << "           [--test1]    : Run the function injection test \n"
         << "           [--test5]    : Run the Program state set text \n"
+        << "           [--test6]    : Run the main function injection test \n"
         << std::endl;
 
     return -1;
@@ -87,73 +88,6 @@ namespace TEST_1
         osg::Group* g = new osg::Group();
         g->addChild( earth );
         g->getOrCreateStateSet()->setAttributeAndModes( createHaze(), osg::StateAttribute::ON );
-        return g;
-    }
-}
-
-//-------------------------------------------------------------------------
-
-// Simple main injection test -- injects custum vertex and fragment main-functions. Uses BindFragDataLocation instead of gl_FragColor.
-namespace TEST_2
-{
-    char s_vertMain[] =
-            "#version " GLSL_VERSION_STR " \n"
-
-            "void oe_model_stage_hook(inout vec4 vertex); \n"
-            "void oe_view_stage_hook(inout vec4 vertex); \n"
-            "void oe_clip_stage_hook(inout vec4 vertex); \n"
-
-            "out vec4 osg_FrontColor; \n"
-            "out vec3 oe_Normal; \n"
-
-            "void main(void) \n"
-            "{ \n"
-            "    osg_FrontColor = gl_Color; \n"
-            "    vec4 vertex = gl_Vertex; \n"
-            "    oe_Normal = gl_Normal; \n"
-            "    oe_model_stage_hook(vertex); \n"
-            "    oe_Normal = normalize(gl_NormalMatrix * oe_Normal); \n"
-            "    vertex = gl_ModelViewMatrix * vertex; \n"
-            "    oe_view_stage_hook(vertex); \n"
-            "    vertex = gl_ProjectionMatrix * vertex; \n"
-            "    oe_clip_stage_hook(vertex); \n"
-            "    gl_Position = vertex; \n"
-            "} \n";
-
-    char s_fragMain[] =
-            "#version " GLSL_VERSION_STR " \n"
-
-            "void oe_coloring_stage_hook(inout vec4 color); \n"
-            "void oe_lighting_stage_hook(inout vec4 color); \n"
-
-            "in vec4 osg_FrontColor; \n"
-            "out vec4 outColor; \n"
-
-            "void main(void) \n"
-            "{ \n"
-            "    vec4 color = osg_FrontColor; \n"
-
-            "    oe_coloring_stage_hook(color); \n"
-            "    oe_lighting_stage_hook(color); \n"
-
-            "    outColor = color; \n"
-            "} \n";
-
-    osg::StateAttribute* createMain()
-    {
-        osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram;
-        vp->setFunction("mainVert", s_vertMain, osgEarth::ShaderComp::LOCATION_VERTEX_MAIN);
-        vp->setFunction("mainFrag", s_fragMain, osgEarth::ShaderComp::LOCATION_FRAGMENT_MAIN);
-
-        vp->getTemplate()->addBindFragDataLocation("outColor", 0);
-        return vp;
-    }
-
-    osg::Group* run( osg::Node* earth )
-    {
-        osg::Group* g = new osg::Group();
-        g->addChild( earth );
-        g->getOrCreateStateSet()->setAttributeAndModes( createMain(), osg::StateAttribute::ON );
         return g;
     }
 }
@@ -223,6 +157,72 @@ namespace TEST_5
     }
 }
 
+//-------------------------------------------------------------------------
+
+// Simple main injection test -- injects custum vertex and fragment main-functions. Uses BindFragDataLocation instead of gl_FragColor.
+namespace TEST_6
+{
+    char s_vertMain[] =
+            "#version " GLSL_VERSION_STR " \n"
+
+            "void oe_model_stage_hook(inout vec4 vertex); \n"
+            "void oe_view_stage_hook(inout vec4 vertex); \n"
+            "void oe_clip_stage_hook(inout vec4 vertex); \n"
+
+            "out vec4 osg_FrontColor; \n"
+            "out vec3 oe_Normal; \n"
+
+            "void main(void) \n"
+            "{ \n"
+            "    osg_FrontColor = gl_Color; \n"
+            "    vec4 vertex = gl_Vertex; \n"
+            "    oe_Normal = gl_Normal; \n"
+            "    oe_model_stage_hook(vertex); \n"
+            "    oe_Normal = normalize(gl_NormalMatrix * oe_Normal); \n"
+            "    vertex = gl_ModelViewMatrix * vertex; \n"
+            "    oe_view_stage_hook(vertex); \n"
+            "    vertex = gl_ProjectionMatrix * vertex; \n"
+            "    oe_clip_stage_hook(vertex); \n"
+            "    gl_Position = vertex; \n"
+            "} \n";
+
+    char s_fragMain[] =
+            "#version " GLSL_VERSION_STR " \n"
+
+            "void oe_coloring_stage_hook(inout vec4 color); \n"
+            "void oe_lighting_stage_hook(inout vec4 color); \n"
+
+            "in vec4 osg_FrontColor; \n"
+            "out vec4 outColor; \n"
+
+            "void main(void) \n"
+            "{ \n"
+            "    vec4 color = osg_FrontColor; \n"
+
+            "    oe_coloring_stage_hook(color); \n"
+            "    oe_lighting_stage_hook(color); \n"
+
+            "    outColor = color; \n"
+            "} \n";
+
+    osg::StateAttribute* createMain()
+    {
+        osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram;
+        vp->setFunction("mainVert", s_vertMain, osgEarth::ShaderComp::LOCATION_VERTEX_MAIN);
+        vp->setFunction("mainFrag", s_fragMain, osgEarth::ShaderComp::LOCATION_FRAGMENT_MAIN);
+
+        vp->getTemplate()->addBindFragDataLocation("outColor", 0);
+        return vp;
+    }
+
+    osg::Group* run( osg::Node* earth )
+    {
+        osg::Group* g = new osg::Group();
+        g->addChild( earth );
+        g->getOrCreateStateSet()->setAttributeAndModes( createMain(), osg::StateAttribute::ON );
+        return g;
+    }
+}
 
 //-------------------------------------------------------------------------
 
@@ -232,9 +232,9 @@ int main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     bool test1 = arguments.read("--test1");
-    bool test2 = arguments.read("--test2");
     bool test5 = arguments.read("--test5");
-    bool ok    = test1 || test5 || test2;
+    bool test6 = arguments.read("--test6");
+    bool ok    = test1 || test5 || test6;
 
     if ( !ok )
     {
@@ -258,9 +258,9 @@ int main(int argc, char** argv)
         {
             viewer.setSceneData( TEST_1::run(earthNode) );
             label->setText( "Function injection test: the map should appear hazy." );
-        } else if ( test2 )
+        } else if ( test6 )
         {
-            viewer.setSceneData( TEST_2::run(earthNode) );
+            viewer.setSceneData( TEST_6::run(earthNode) );
             label->setText( "Main injection test: the map should appear normal." );
         }
     }

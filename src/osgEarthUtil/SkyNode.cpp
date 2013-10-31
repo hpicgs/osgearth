@@ -402,7 +402,7 @@ namespace
 
     static char s_versionString[] =
 #ifdef OSG_GLES2_AVAILABLE
-        "#version 100 \n";
+        "#version " GLSL_VERSION_STR " \n";
 #else
         "#version " GLSL_VERSION_STR " \n";
 #endif
