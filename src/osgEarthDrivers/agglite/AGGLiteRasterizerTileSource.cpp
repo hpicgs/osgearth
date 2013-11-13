@@ -221,6 +221,8 @@ public:
         ras.gamma(1.3);
         ras.filling_rule(agg::fill_even_odd);
 
+        // construct an extent for cropping the geometry to our tile.
+        // extend just outside the actual extents so we don't get edge artifacts:
         GeoExtent cropExtent = GeoExtent(imageExtent);
         cropExtent.scale(1.1, 1.1);
 
@@ -242,9 +244,8 @@ public:
                 const PolygonSymbol* poly =
                     feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
                     masterPoly;
-                osg::Vec4f color = osg::Vec4f(1,1,1,1);
-                if(poly) color = poly->fill()->color();
 
+                const osg::Vec4 color = poly ? static_cast<osg::Vec4>(poly->fill()->color()) : osg::Vec4(1,1,1,1);
                 rasterize(croppedGeometry.get(), color, frame, ras, ren);
             }
         }
@@ -262,13 +263,11 @@ public:
                     feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
                     masterLine;
                 
-                osg::Vec4f color = osg::Vec4f(1,1,1,1);
-                if(line) color = line->stroke()->color();
+                const osg::Vec4 color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1,1,1,1);
                 rasterize(croppedGeometry.get(), color, frame, ras, ren);
             }
         }
 
-        //bd->_pass++;
         return true;
     }
 
@@ -328,7 +327,10 @@ private:
     std::string _configPath;
 };
 
-// Reads tiles from a TileCache disk cache.
+
+/**
+ * Plugin entry point for the AGGLite feature rasterizer
+ */
 class AGGLiteRasterizerTileSourceDriver : public TileSourceDriver
 {
     public:
@@ -341,7 +343,9 @@ class AGGLiteRasterizerTileSourceDriver : public TileSourceDriver
         
         virtual bool acceptsExtension(const std::string& extension) const
         {
-            return osgDB::equalCaseInsensitive( extension, "osgearth_agglite" );
+            return
+                osgDB::equalCaseInsensitive( extension, "osgearth_agglite" ) ||
+                osgDB::equalCaseInsensitive( extension, "osgearth_rasterize" );
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
