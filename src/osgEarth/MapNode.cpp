@@ -260,9 +260,12 @@ MapNode::init()
     // initialize terrain-level lighting:
     if ( terrainOptions.enableLighting().isSet() )
     {
-        _terrainEngineContainer->getOrCreateStateSet()->setMode( 
-            GL_LIGHTING, 
-            terrainOptions.enableLighting().value() ? 1 : 0 );
+        //_terrainEngineContainer->getOrCreateStateSet()->setMode( 
+        //    GL_LIGHTING, 
+        //    terrainOptions.enableLighting().value() ? 1 : 0 );
+
+        _terrainEngineContainer->getOrCreateStateSet()->addUniform(
+            Registry::shaderFactory()->createUniformForGLMode(GL_LIGHTING, *terrainOptions.enableLighting()) );
     }
 
     if ( _terrainEngine )
@@ -336,7 +339,6 @@ MapNode::init()
 
     osg::StateSet* stateset = getOrCreateStateSet();
     if ( _mapNodeOptions.enableLighting().isSet() )
-
     {
         stateset->setMode( 
             GL_LIGHTING, 
