@@ -722,7 +722,7 @@ VirtualProgram::setFunction(const std::string& functionName,
         ofm.insert( std::pair<float,std::string>( priority, functionName ) );
 
         // create and add the new shader function.
-        osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_CLIP ?
+        osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_MAIN ?
             osg::Shader::VERTEX : osg::Shader::FRAGMENT;
 
         osg::Shader* shader = new osg::Shader(type, shaderSource);
